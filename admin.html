@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Etex</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: white;
+            margin: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6600;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 200px);
+            margin: 20px;
+            gap: 20px;
+        }
+        
+        .map-container {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .sidebar {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .tracking-item {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tracking-item:hover {
+            background: #fff3e0;
+            border-color: #ff6600;
+            transform: translateY(-2px);
+        }
+        
+        .tracking-item.active {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+        }
+        
+        .tracking-title {
+            font-weight: bold;
+            color: #ff6600;
+            margin-bottom: 8px;
+        }
+        
+        .tracking-details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background-color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-inactive {
+            background-color: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(255,102,0,0.3);
+            transition: all 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .map-container {
+                height: 400px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚚 Painel Administrativo Etex</h1>
+        <p>Monitoramento de Frota em Tempo Real</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-number" id="activeCount">-</div>
+            <div class="stat-label">Rastreamentos Ativos</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="totalToday">-</div>
+            <div class="stat-label">Total Hoje</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="lastUpdate">-</div>
+            <div class="stat-label">Último Update</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="sidebar">
+            <h3 style="color: #ff6600; margin-bottom: 20px;">📋 Rastreamentos</h3>
+            <div id="trackingList">
+                <p style="text-align: center; color: #666;">Carregando...</p>
+            </div>
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="refreshData()" title="Atualizar dados">
+        🔄
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Carregar configuração Firebase
+        await import('./firebase-config.js');
+        
+        // Inicializar Firebase
+        const app = initializeApp(window.firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Inicializar mapa
+        const map = L.map('map').setView([-15.7939, -47.8825], 5); // Centro do Brasil
+        
+        // Adicionar tiles do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors | Etex'
+        }).addTo(map);
+        
+        // Ícone personalizado para caminhões
+        const truckIcon = L.divIcon({
+            html: '<div style="background: #ff6600; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">🚚</div>',
+            iconSize: [30, 30],
+            className: 'custom-truck-icon'
+        });
+        
+        // Variáveis globais
+        let markers = {};
+        let trackingData = {};
+        
+        // Escutar mudanças no Firebase
+        const trackingsRef = ref(database, 'trackings');
+        onValue(trackingsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                trackingData = data;
+                updateMap(data);
+                updateSidebar(data);
+                updateStats(data);
+            } else {
+                // Nenhum dado encontrado
+                document.getElementById('trackingList').innerHTML = 
+                    '<p style="text-align: center; color: #666;">Nenhum rastreamento ativo no momento.</p>';
+            }
+        });
+        
+        // Atualizar mapa
+        function updateMap(data) {
+            // Limpar marcadores antigos
+            Object.values(markers).forEach(marker => map.removeLayer(marker));
+            markers = {};
+            
+            const bounds = [];
+            
+            Object.entries(data).forEach(([orderId, tracking]) => {
+                if (tracking.active && tracking.latitude && tracking.longitude) {
+                    const position = [tracking.latitude, tracking.longitude];
+                    bounds.push(position);
+                    
+                    // Criar marcador
+                    const marker = L.marker(position, { icon: truckIcon }).addTo(map);
+                    
+                    // Popup com informações
+                    const lastUpdate = new Date(tracking.timestamp).toLocaleString('pt-BR');
+                    marker.bindPopup(`
+                        <div style="text-align: center; padding: 10px;">
+                            <h4 style="color: #ff6600; margin: 0 0 10px 0;">📋 ${orderId}</h4>
+                            <p style="margin: 5px 0;"><strong>🚛 Veículo:</strong> ${tracking.licensePlate}</p>
+                            <p style="margin: 5px 0;"><strong>⏰ Atualizado:</strong> ${lastUpdate}</p>
+                            <p style="margin: 5px 0;"><strong>📍 Precisão:</strong> ±${Math.round(tracking.accuracy || 0)}m</p>
+                            <button onclick="centerOnTracking('${orderId}')" style="background: #ff6600; color: white; border: none; padding: 8px 15px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
+                                🎯 Centralizar
+                            </button>
+                        </div>
+                    `);
+                    
+                    markers[orderId] = marker;
+                }
+            });
+            
+            // Ajustar zoom para mostrar todos os marcadores
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+        
+        // Atualizar sidebar
+        function updateSidebar(data) {
+            const trackingList = document.getElementById('trackingList');
+            let html = '';
+            
+            const activeTrackings = Object.entries(data).filter(([_, tracking]) => tracking.active);
+            
+            if (activeTrackings.length === 0) {
+                html = '<p style="text-align: center; color: #666;">Nenhum rastreamento ativo no momento.</p>';
+            } else {
+                activeTrackings.forEach(([orderId, tracking]) => {
+                    const lastUpdate = new Date(tracking.timestamp).toLocaleString('pt-BR');
+                    const startTime = new Date(tracking.startTime).toLocaleString('pt-BR');
+                    
+                    html += `
+                        <div class="tracking-item" onclick="centerOnTracking('${orderId}')">
+                            <div class="tracking-title">
+                                <span class="status-indicator status-active"></span>
+                                📋 ${orderId}
+                            </div>
+                            <div class="tracking-details">
+                                <p><strong>🚛 Veículo:</strong> ${tracking.licensePlate}</p>
+                                <p><strong>🕐 Início:</strong> ${startTime}</p>
+                                <p><strong>⏰ Último update:</strong> ${lastUpdate}</p>
+                                <p><strong>📍 Coordenadas:</strong> ${tracking.latitude?.toFixed(6)}, ${tracking.longitude?.toFixed(6)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            trackingList.innerHTML = html;
+        }
+        
+        // Atualizar estatísticas
+        function updateStats(data) {
+            const activeTrackings = Object.values(data).filter(tracking => tracking.active);
+            
+            // Total de rastreamentos hoje
+            const today = new Date().toDateString();
+            const todayTrackings = Object.values(data).filter(tracking => 
+                new Date(tracking.startTime).toDateString() === today
+            );
+            
+            // Último update
+            let lastUpdate = '---';
+            if (activeTrackings.length > 0) {
+                const latestTracking = activeTrackings.reduce((latest, current) => 
+                    new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest
+                );
+                lastUpdate = new Date(latestTracking.timestamp).toLocaleTimeString('pt-BR');
+            }
+            
+            document.getElementById('activeCount').textContent = activeTrackings.length;
+            document.getElementById('totalToday').textContent = todayTrackings.length;
+            document.getElementById('lastUpdate').textContent = lastUpdate;
+        }
+        
+        // Centralizar no rastreamento
+        window.centerOnTracking = (orderId) => {
+            const tracking = trackingData[orderId];
+            if (tracking && tracking.latitude && tracking.longitude) {
+                map.setView([tracking.latitude, tracking.longitude], 16);
+                
+                // Abrir popup do marcador
+                if (markers[orderId]) {
+                    markers[orderId].openPopup();
+                }
+            }
+        };
+        
+        // Atualizar dados manualmente
+        window.refreshData = () => {
+            console.log('🔄 Atualizando dados...');
+            // O Firebase já atualiza automaticamente, mas podemos forçar
+            location.reload();
+        };
+        
+        // Auto-refresh a cada 30 segundos
+        setInterval(() => {
+            console.log('🔄 Auto-refresh...');
+        }, 30000);
+        
+        console.log('🚚 Painel Admin Etex carregado!');
+    </script>
+</body>
+</html>
