@@ -1,0 +1,36 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fundo branco com bordas arredondadas -->
+  <rect width="192" height="192" rx="24" ry="24" fill="white"/>
+  
+  <!-- Logo Etex centralizada -->
+  <g transform="translate(96, 96)">
+    <!-- Texto "etex" -->
+    <g transform="translate(-60, -20)">
+      <!-- Letra 'e' -->
+      <path d="M0 20 L0 0 L20 0 M0 10 L15 10 M0 20 L20 20" stroke="#2d2d2d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      
+      <!-- Letra 't' -->
+      <g transform="translate(25, 0)">
+        <path d="M7 0 L7 20 M2 5 L12 5" stroke="#2d2d2d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+      
+      <!-- Letra 'e' -->
+      <g transform="translate(45, 0)">
+        <path d="M0 20 L0 0 L20 0 M0 10 L15 10 M0 20 L20 20" stroke="#2d2d2d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+      
+      <!-- Letra 'x' -->
+      <g transform="translate(70, 0)">
+        <path d="M0 0 L15 20 M15 0 L0 20" stroke="#2d2d2d" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </g>
+    </g>
+    
+    <!-- Elemento laranja (seta/indicador) -->
+    <g transform="translate(45, 25)">
+      <path d="M0 0 L20 10 L0 20 Z" fill="#ff6600"/>
+    </g>
+  </g>
+  
+  <!-- Borda sutil -->
+  <rect width="192" height="192" rx="24" ry="24" fill="none" stroke="#e0e0e0" stroke-width="1"/>
+</svg>
