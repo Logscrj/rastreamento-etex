@@ -1,0 +1,32 @@
+{
+  "name": "Rastreamento Etex",
+  "short_name": "Etex Track",
+  "description": "Sistema de rastreamento de cargas Etex",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff6600",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "logistics"],
+  "shortcuts": [
+    {
+      "name": "Painel Admin",
+      "url": "/admin.html",
+      "icons": [{"src": "assets/icon-192.png", "sizes": "192x192"}]
+    }
+  ]
+}
