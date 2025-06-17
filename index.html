@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreamento Etex - Motorista</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff6600">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(255,102,0,0.3);
+        }
+        
+        .logo {
+            height: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-card {
+            background: rgba(255,102,0,0.2);
+            border: 2px solid #ff6600;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .status-card.active {
+            background: rgba(76,175,80,0.2);
+            border-color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ff6600;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255,102,0,0.3);
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            transition: all 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #ff6600;
+            box-shadow: 0 0 20px rgba(255,102,0,0.3);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,102,0,0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .info-box {
+            background: rgba(255,193,7,0.1);
+            border-left: 4px solid #FFC107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        
+        .links-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .link-item {
+            background: rgba(255,102,0,0.1);
+            border: 1px solid rgba(255,102,0,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .link-item h4 {
+            color: #ff6600;
+            margin-bottom: 5px;
+        }
+        
+        .link-item a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #ff6600;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <!-- Substitua pelo caminho da sua logo -->
+        <!-- <img src="assets/logo-etex.png" alt="Etex" class="logo"> -->
+        <h1>🚚 ETEX RASTREAMENTO</h1>
+        <p>Sistema de Monitoramento de Cargas</p>
+    </div>
+    
+    <div class="container">
+        <div class="status-card" id="statusCard">
+            <div id="statusText">📱 Preencha os dados para iniciar o rastreamento</div>
+        </div>
+        
+        <!-- Formulário do Motorista -->
+        <form id="driverForm" style="display: block;">
+            <div class="form-group">
+                <label for="orderId">📋 Número do Pedido</label>
+                <input type="text" id="orderId" placeholder="Ex: PED123456" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="licensePlate">🚛 Placa do Veículo</label>
+                <input type="text" id="licensePlate" placeholder="Ex: ABC-1234" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="startBtn">
+                ▶️ Iniciar Rastreamento
+            </button>
+        </form>
+        
+        <!-- Controles durante rastreamento -->
+        <div id="trackingControls" style="display: none;">
+            <div class="info-box">
+                <p><strong>⚠️ IMPORTANTE:</strong> Mantenha este app aberto em segundo plano. O rastreamento continuará funcionando mesmo com a tela desligada.</p>
+            </div>
+            
+            <button class="btn btn-danger" id="stopBtn">
+                ⏹️ Parar Rastreamento
+            </button>
+        </div>
+        
+        <!-- Links de acompanhamento -->
+        <div id="linksCard" class="links-card" style="display: none;">
+            <h3 style="color: #ff6600; margin-bottom: 15px;">🔗 Links de Acompanhamento</h3>
+            
+            <div class="link-item">
+                <h4>👤 Para o Cliente:</h4>
+                <a href="#" id="customerLink" target="_blank">Aguardando...</a>
+                <button onclick="copyLink('customer')" style="float: right; background: #ff6600; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">📋</button>
+            </div>
+            
+            <div class="link-item">
+                <h4>⚙️ Painel Admin:</h4>
+                <a href="admin.html" target="_blank" id="adminLink">Abrir Painel Administrativo</a>
+                <button onclick="copyLink('admin')" style="float: right; background: #ff6600; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">📋</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>🚚 Etex - Sistema de Rastreamento v2025<br>
+        <small>Desenvolvido com tecnologia PWA avançada</small></p>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, push, onDisconnect } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Carregar configuração
+        await import('./firebase-config.js');
+        
+        // Inicializar Firebase
+        const app = initializeApp(window.firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Variáveis globais
+        let isTracking = false;
+        let watchId = null;
+        let trackingInterval = null;
+        let currentOrderId = null;
+        
+        // Elementos DOM
+        const form = document.getElementById('driverForm');
+        const statusCard = document.getElementById('statusCard');
+        const statusText = document.getElementById('statusText');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const trackingControls = document.getElementById('trackingControls');
+        const linksCard = document.getElementById('linksCard');
+        const customerLink = document.getElementById('customerLink');
+        
+        // ✅ Registrar Service Worker para funcionamento em segundo plano
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('✅ Service Worker registrado:', registration);
+                
+                // Manter conexão ativa com service worker
+                setInterval(() => {
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'KEEP_ALIVE'
+                        });
+                    }
+                }, 30000); // A cada 30 segundos
+                
+            } catch (error) {
+                console.error('❌ Erro ao registrar Service Worker:', error);
+            }
+        }
+        
+        // ✅ Solicitar Wake Lock para manter app ativo
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('✅ Wake Lock ativo');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('⚠️ Wake Lock liberado');
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Erro ao solicitar Wake Lock:', error);
+            }
+        }
+        
+        // ✅ Solicitar permissões avançadas
+        async function requestPermissions() {
+            try {
+                // Permissão de localização
+                const geoPermission = await navigator.permissions.query({ name: 'geolocation' });
+                console.log('📍 Permissão de localização:', geoPermission.state);
+                
+                // Permissão de notificações
+                if ('Notification' in window) {
+                    const notificationPermission = await Notification.requestPermission();
+                    console.log('🔔 Permissão de notificação:', notificationPermission);
+                }
+                
+                // Background Sync
+                if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                    console.log('✅ Background Sync suportado');
+                }
+                
+                return geoPermission.state === 'granted';
+            } catch (error) {
+                console.error('❌ Erro ao solicitar permissões:', error);
+                return false;
+            }
+        }
+        
+        // ✅ Função principal de início do rastreamento
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const orderId = document.getElementById('orderId').value.trim();
+            const licensePlate = document.getElementById('licensePlate').value.trim();
+            
+            if (!orderId || !licensePlate) {
+                alert('⚠️ Preencha todos os campos!');
+                return;
+            }
+            
+            startBtn.disabled = true;
+            startBtn.innerHTML = '⏳ Iniciando...<span class="spinner"></span>';
+            
+            try {
+                // Solicitar permissões
+                statusText.textContent = '🔐 Solicitando permissões...';
+                const hasPermission = await requestPermissions();
+                
+                if (!hasPermission) {
+                    throw new Error('Permissão de localização negada');
+                }
+                
+                // Ativar Wake Lock
+                await requestWakeLock();
+                
+                // Obter localização inicial
+                statusText.textContent = '📍 Obtendo localização...';
+                const position = await getCurrentPosition();
+                
+                const { latitude, longitude } = position.coords;
+                const timestamp = new Date().toISOString();
+                
+                // Salvar no Firebase
+                statusText.textContent = '☁️ Conectando ao servidor...';
+                const trackingData = {
+                    orderId,
+                    licensePlate,
+                    latitude,
+                    longitude,
+                    timestamp,
+                    active: true,
+                    startTime: timestamp,
+                    company: 'Etex',
+                    accuracy: position.coords.accuracy
+                };
+                
+                await set(ref(database, `trackings/${orderId}`), trackingData);
+                
+                // Configurar desconexão
+                onDisconnect(ref(database, `trackings/${orderId}/active`)).set(false);
+                
+                // Iniciar rastreamento contínuo
+                currentOrderId = orderId;
+                isTracking = true;
+                
+                startContinuousTracking(orderId);
+                updateUI();
+                
+                statusText.textContent = `✅ Rastreamento ativo - Pedido ${orderId}`;
+                statusCard.classList.add('active');
+                
+                // Mostrar notificação
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('🚚 Etex Rastreamento', {
+                        body: `Rastreamento iniciado para o pedido ${orderId}`,
+                        icon: 'assets/icon-192.png'
+                    });
