@@ -215,6 +215,8 @@
             margin-top: 10px;
             font-size: 12px;
             color: #ccc;
+            max-height: 150px;
+            overflow-y: auto;
         }
         
         @media (max-width: 480px) {
@@ -294,18 +296,55 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, set, push, onDisconnect } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Carregar configuração
-        await import('./firebase-config.js');
+        // ✅ Inicialização do app
+        showDebug('🚚 App Etex Rastreamento carregado!');
+        showDebug('📱 Versão: 2025.1 - Debug Mode');
+        showDebug('🌐 URL: ' + window.location.href);
         
-        // Inicializar Firebase
-        const app = initializeApp(window.firebaseConfig);
-        const database = getDatabase(app);
+        // Verificar se está em HTTPS
+        if (window.location.protocol === 'https:') {
+            showDebug('🔒 HTTPS ativo - OK para geolocalização');
+        } else {
+            showDebug('⚠️ HTTP detectado - pode haver problemas com geolocalização');
+        }
         
-        // Variáveis globais
+        // Verificar suporte a recursos necessários
+        if ('geolocation' in navigator) {
+            showDebug('✅ Geolocalização suportada');
+        } else {
+            showDebug('❌ Geolocalização NÃO suportada');
+        }
+        
+        if ('wakeLock' in navigator) {
+            showDebug('✅ Wake Lock suportado');
+        } else {
+            showDebug('⚠️ Wake Lock não suportado');
+        }
+        
+        if ('serviceWorker' in navigator) {
+            showDebug('✅ Service Worker suportado (mas desabilitado)');
+        } else {
+            showDebug('⚠️ Service Worker não suportado');
+        }
+        
+        // Verificar se está sendo executado como PWA
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+            showDebug('📱 Executando como PWA');
+        } else {
+            showDebug('🌐 Executando no navegador');
+        }
+        
+        showDebug('🎯 Sistema pronto! Preencha os campos e teste o rastreamento.');
+        
+    </script>
+</body>
+</html>Variáveis globais
         let isTracking = false;
         let watchId = null;
         let trackingInterval = null;
         let currentOrderId = null;
+        let app = null;
+        let database = null;
         
         // Elementos DOM
         const form = document.getElementById('driverForm');
@@ -323,25 +362,59 @@
             console.log(message);
             debugInfo.style.display = 'block';
             debugInfo.innerHTML += message + '<br>';
+            debugInfo.scrollTop = debugInfo.scrollHeight;
         }
         
-        // ✅ Registrar Service Worker para funcionamento em segundo plano
-        if ('serviceWorker' in navigator) {
+        // ✅ Inicializar Firebase
+        async function initFirebase() {
             try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                showDebug('✅ Service Worker registrado');
+                showDebug('🔥 Carregando configuração Firebase...');
                 
-                // Manter conexão ativa com service worker
-                setInterval(() => {
-                    if (navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                            type: 'KEEP_ALIVE'
-                        });
-                    }
-                }, 30000);
+                // Tentar carregar configuração
+                try {
+                    await import('./firebase-config.js');
+                    showDebug('✅ Arquivo firebase-config.js carregado');
+                } catch (configError) {
+                    showDebug('❌ Erro ao carregar firebase-config.js: ' + configError.message);
+                    throw new Error('Arquivo firebase-config.js não encontrado. Certifique-se de que existe e está configurado.');
+                }
                 
+                // Verificar se a configuração existe
+                if (!window.firebaseConfig) {
+                    throw new Error('Configuração do Firebase não encontrada em window.firebaseConfig');
+                }
+                
+                showDebug('🔥 Inicializando Firebase...');
+                app = initializeApp(window.firebaseConfig);
+                database = getDatabase(app);
+                showDebug('✅ Firebase inicializado com sucesso!');
+                
+                return true;
             } catch (error) {
-                showDebug('❌ Erro Service Worker: ' + error.message);
+                showDebug('❌ Erro Firebase: ' + error.message);
+                return false;
+            }
+        }
+        
+        // ✅ Service Worker desabilitado para debug
+        showDebug('🚚 Service Worker desabilitado para debug');
+        
+        // ✅ Solicitar Wake Lock para manter app ativo
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    showDebug('✅ Wake Lock ativo');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        showDebug('⚠️ Wake Lock liberado');
+                    });
+                } else {
+                    showDebug('⚠️ Wake Lock não suportado neste navegador');
+                }
+            } catch (error) {
+                showDebug('❌ Wake Lock erro: ' + error.message);
             }
         }
         
@@ -357,39 +430,54 @@
                 
                 showDebug('📍 Navegador suporta geolocalização');
                 
+                // Verificar permissões via API (se suportada)
+                if ('permissions' in navigator) {
+                    try {
+                        const result = await navigator.permissions.query({name: 'geolocation'});
+                        showDebug('🔍 Status da permissão: ' + result.state);
+                        
+                        if (result.state === 'denied') {
+                            throw new Error('SOLUÇÃO: Clique no ícone de cadeado 🔒 na barra de endereços, selecione "Localização" → "Permitir", depois recarregue a página.');
+                        }
+                    } catch (permError) {
+                        showDebug('⚠️ API de permissões não suportada: ' + permError.message);
+                    }
+                }
+                
                 // Método direto com Promise
                 return new Promise((resolve, reject) => {
-                    showDebug('📡 Solicitando localização...');
+                    showDebug('📡 Solicitando localização atual...');
                     
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
-                            showDebug('✅ Permissão concedida! Lat: ' + position.coords.latitude + ', Lng: ' + position.coords.longitude);
+                            showDebug('✅ Permissão concedida! Lat: ' + position.coords.latitude.toFixed(6) + ', Lng: ' + position.coords.longitude.toFixed(6));
+                            showDebug('🎯 Precisão: ±' + Math.round(position.coords.accuracy) + 'm');
                             resolve(true);
                         },
                         (error) => {
-                            showDebug('⚠️ Primeira tentativa falhou: ' + error.message);
+                            showDebug('⚠️ Primeira tentativa falhou. Código: ' + error.code + ', Mensagem: ' + error.message);
                             
                             // Segunda tentativa com configurações menos restritivas
-                            showDebug('🔄 Tentando novamente...');
+                            showDebug('🔄 Tentando novamente com configurações alternativas...');
                             
                             navigator.geolocation.getCurrentPosition(
                                 (position) => {
-                                    showDebug('✅ Segunda tentativa funcionou!');
+                                    showDebug('✅ Segunda tentativa funcionou! Lat: ' + position.coords.latitude.toFixed(6));
                                     resolve(true);
                                 },
                                 (secondError) => {
-                                    showDebug('❌ Segunda tentativa falhou: ' + secondError.message);
+                                    showDebug('❌ Segunda tentativa falhou. Código: ' + secondError.code);
                                     
                                     let errorMessage = 'Erro ao obter localização';
                                     switch(secondError.code) {
                                         case 1: // PERMISSION_DENIED
-                                            errorMessage = 'SOLUÇÃO: Clique no ícone de cadeado 🔒 na barra de endereços e permita o acesso à localização. Depois recarregue a página.';
+                                            errorMessage = 'SOLUÇÃO: Clique no ícone de cadeado 🔒 na barra de endereços → "Localização" → "Sempre permitir" → Recarregue a página';
                                             break;
                                         case 2: // POSITION_UNAVAILABLE
-                                            errorMessage = 'Localização indisponível. Verifique se o GPS está ativo e tente em local com melhor sinal.';
+                                            errorMessage = 'Localização indisponível. Verifique: 1) GPS ativo, 2) Conexão com internet, 3) Localização externa (não em prédios)';
                                             break;
                                         case 3: // TIMEOUT
-                                            errorMessage = 'Timeout. Tente novamente em alguns segundos.';
+                                            errorMessage = 'Timeout. Tente: 1) Sair de ambientes fechados, 2) Aguardar alguns segundos, 3) Tentar novamente';
                                             break;
                                     }
                                     
@@ -397,39 +485,22 @@
                                 },
                                 {
                                     enableHighAccuracy: false,  // Menos preciso, mas mais rápido
-                                    timeout: 20000,             // 20 segundos
-                                    maximumAge: 300000          // Aceita cache de 5 minutos
+                                    timeout: 30000,             // 30 segundos
+                                    maximumAge: 600000          // Aceita cache de 10 minutos
                                 }
                             );
                         },
                         {
                             enableHighAccuracy: true,
-                            timeout: 15000,
+                            timeout: 20000,
                             maximumAge: 0
                         }
                     );
                 });
                 
             } catch (error) {
-                showDebug('❌ Erro geral: ' + error.message);
+                showDebug('❌ Erro geral nas permissões: ' + error.message);
                 throw error;
-            }
-        }
-        
-        // ✅ Solicitar Wake Lock para manter app ativo
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    showDebug('✅ Wake Lock ativo');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        showDebug('⚠️ Wake Lock liberado');
-                    });
-                }
-            } catch (error) {
-                showDebug('❌ Wake Lock não suportado');
             }
         }
         
@@ -463,6 +534,7 @@
             if (!orderId || !licensePlate) {
                 statusText.textContent = '⚠️ Preencha todos os campos!';
                 statusCard.className = 'status-card error';
+                showDebug('❌ Campos obrigatórios não preenchidos');
                 return;
             }
             
@@ -473,6 +545,13 @@
             debugInfo.style.display = 'block';
             
             try {
+                // Inicializar Firebase primeiro
+                statusText.textContent = '🔥 Conectando ao Firebase...';
+                const firebaseOk = await initFirebase();
+                if (!firebaseOk) {
+                    throw new Error('Falha ao conectar com Firebase. Verifique a configuração.');
+                }
+                
                 // Solicitar permissões
                 statusText.textContent = '🔐 Solicitando permissões...';
                 const hasPermission = await requestPermissions();
@@ -485,16 +564,16 @@
                 await requestWakeLock();
                 
                 // Obter localização inicial
-                statusText.textContent = '📍 Obtendo localização...';
+                statusText.textContent = '📍 Obtendo localização precisa...';
                 const position = await getCurrentPosition();
                 
                 const { latitude, longitude } = position.coords;
                 const timestamp = new Date().toISOString();
                 
-                showDebug('📍 Localização inicial: ' + latitude + ', ' + longitude);
+                showDebug('📍 Localização confirmada: ' + latitude.toFixed(6) + ', ' + longitude.toFixed(6));
                 
                 // Salvar no Firebase
-                statusText.textContent = '☁️ Conectando ao servidor...';
+                statusText.textContent = '☁️ Salvando dados no servidor...';
                 const trackingData = {
                     orderId,
                     licensePlate,
@@ -504,14 +583,15 @@
                     active: true,
                     startTime: timestamp,
                     company: 'Etex',
-                    accuracy: position.coords.accuracy
+                    accuracy: position.coords.accuracy || 0
                 };
                 
                 await set(ref(database, `trackings/${orderId}`), trackingData);
-                showDebug('☁️ Dados salvos no Firebase');
+                showDebug('☁️ Dados salvos no Firebase com sucesso');
                 
-                // Configurar desconexão
+                // Configurar desconexão automática
                 onDisconnect(ref(database, `trackings/${orderId}/active`)).set(false);
+                showDebug('🔌 Desconexão automática configurada');
                 
                 // Iniciar rastreamento contínuo
                 currentOrderId = orderId;
@@ -524,12 +604,24 @@
                 statusCard.classList.add('active');
                 
                 // Mostrar notificação
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('🚚 Etex Rastreamento', {
-                        body: `Rastreamento iniciado para o pedido ${orderId}`,
-                        icon: 'assets/icon-192.png'
-                    });
+                if ('Notification' in window) {
+                    if (Notification.permission === 'granted') {
+                        new Notification('🚚 Etex Rastreamento', {
+                            body: `Rastreamento iniciado para o pedido ${orderId}`,
+                            icon: 'assets/icon-192.png'
+                        });
+                    } else if (Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                new Notification('🚚 Etex Rastreamento', {
+                                    body: `Rastreamento iniciado para o pedido ${orderId}`
+                                });
+                            }
+                        });
+                    }
                 }
+                
+                showDebug('🎉 Rastreamento iniciado com sucesso!');
                 
             } catch (error) {
                 console.error('❌ Erro ao iniciar rastreamento:', error);
@@ -537,38 +629,43 @@
                 statusCard.className = 'status-card error';
                 startBtn.disabled = false;
                 startBtn.innerHTML = '▶️ Iniciar Rastreamento';
-                showDebug('❌ ERRO: ' + error.message);
+                showDebug('❌ ERRO FINAL: ' + error.message);
             }
         });
         
-        // ✅ Rastreamento contínuo otimizado para segundo plano
+        // ✅ Rastreamento contínuo otimizado
         function startContinuousTracking(orderId) {
-            showDebug('🔄 Iniciando rastreamento contínuo...');
+            showDebug('🔄 Iniciando rastreamento contínuo a cada 15 segundos...');
             
             // Método 1: watchPosition (principal)
-            watchId = navigator.geolocation.watchPosition(
-                async (position) => {
-                    await updateLocation(orderId, position);
-                },
-                (error) => {
-                    showDebug('⚠️ Erro no watchPosition: ' + error.message);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 5000
-                }
-            );
+            if (navigator.geolocation.watchPosition) {
+                watchId = navigator.geolocation.watchPosition(
+                    async (position) => {
+                        await updateLocation(orderId, position);
+                    },
+                    (error) => {
+                        showDebug('⚠️ Erro no watchPosition: ' + error.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 5000
+                    }
+                );
+                showDebug('👁️ WatchPosition ativado');
+            }
             
-            // Método 2: Interval backup (caso watchPosition falhe)
+            // Método 2: Interval backup (garantia)
             trackingInterval = setInterval(async () => {
                 try {
                     const position = await getCurrentPosition();
                     await updateLocation(orderId, position);
                 } catch (error) {
-                    showDebug('⚠️ Erro no interval backup: ' + error.message);
+                    showDebug('⚠️ Erro no intervalo backup: ' + error.message);
                 }
             }, 15000); // A cada 15 segundos
+            
+            showDebug('⏰ Intervalo de backup ativado (15s)');
         }
         
         // ✅ Atualizar localização no Firebase
@@ -581,51 +678,58 @@
                 await set(ref(database, `trackings/${orderId}/latitude`), latitude);
                 await set(ref(database, `trackings/${orderId}/longitude`), longitude);
                 await set(ref(database, `trackings/${orderId}/timestamp`), timestamp);
-                await set(ref(database, `trackings/${orderId}/accuracy`), accuracy);
+                await set(ref(database, `trackings/${orderId}/accuracy`), accuracy || 0);
                 
                 // Adicionar ao histórico
                 await push(ref(database, `trackings/${orderId}/history`), {
                     latitude,
                     longitude,
                     timestamp,
-                    accuracy
+                    accuracy: accuracy || 0
                 });
                 
-                showDebug('📍 Update: ' + new Date().toLocaleTimeString());
+                const now = new Date().toLocaleTimeString('pt-BR');
+                showDebug('📍 Atualizado: ' + now + ' (±' + Math.round(accuracy || 0) + 'm)');
                 
                 // Atualizar status na tela
-                statusText.textContent = `✅ Ativo - Último update: ${new Date().toLocaleTimeString()}`;
+                statusText.textContent = `✅ Ativo - Último update: ${now}`;
                 
             } catch (error) {
-                showDebug('❌ Erro ao atualizar: ' + error.message);
+                showDebug('❌ Erro ao atualizar localização: ' + error.message);
             }
         }
         
         // ✅ Parar rastreamento
         stopBtn.addEventListener('click', async () => {
             try {
+                showDebug('⏹️ Parando rastreamento...');
+                
                 // Parar watchPosition
                 if (watchId) {
                     navigator.geolocation.clearWatch(watchId);
                     watchId = null;
+                    showDebug('👁️ WatchPosition parado');
                 }
                 
                 // Parar intervalos
                 if (trackingInterval) {
                     clearInterval(trackingInterval);
                     trackingInterval = null;
+                    showDebug('⏰ Intervalo parado');
                 }
                 
                 // Liberar Wake Lock
                 if (wakeLock) {
                     wakeLock.release();
                     wakeLock = null;
+                    showDebug('💤 Wake Lock liberado');
                 }
                 
                 // Marcar como inativo no Firebase
-                if (currentOrderId) {
+                if (currentOrderId && database) {
                     await set(ref(database, `trackings/${currentOrderId}/active`), false);
                     await set(ref(database, `trackings/${currentOrderId}/endTime`), new Date().toISOString());
+                    showDebug('☁️ Marcado como inativo no Firebase');
                 }
                 
                 // Reset UI
@@ -633,19 +737,21 @@
                 currentOrderId = null;
                 statusCard.classList.remove('active');
                 statusText.textContent = '⏹️ Rastreamento finalizado';
-                debugInfo.style.display = 'none';
                 
                 updateUI();
+                showDebug('✅ Rastreamento finalizado com sucesso');
                 
                 // Limpar formulário após 3 segundos
                 setTimeout(() => {
                     document.getElementById('orderId').value = '';
                     document.getElementById('licensePlate').value = '';
                     statusText.textContent = '📱 Preencha os dados para iniciar o rastreamento';
+                    debugInfo.style.display = 'none';
+                    debugInfo.innerHTML = '';
                 }, 3000);
                 
             } catch (error) {
-                showDebug('❌ Erro ao parar: ' + error.message);
+                showDebug('❌ Erro ao parar rastreamento: ' + error.message);
             }
         });
         
@@ -685,29 +791,29 @@
                 }
                 
                 await navigator.clipboard.writeText(url);
+                showDebug('📋 Link copiado: ' + url);
                 alert('📋 Link copiado!');
             } catch (error) {
-                console.error('❌ Erro ao copiar:', error);
+                showDebug('❌ Erro ao copiar link: ' + error.message);
             }
         };
         
-        // ✅ Detectar quando o app volta para foreground
+        // ✅ Detectar mudanças de visibilidade
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && isTracking) {
-                showDebug('👀 App voltou para foreground');
+                showDebug('👀 App voltou para primeiro plano');
+            } else if (document.hidden && isTracking) {
+                showDebug('📱 App foi para segundo plano - rastreamento continua');
             }
         });
         
         // ✅ Detectar conexão/desconexão
         window.addEventListener('online', () => {
-            showDebug('🌐 Conexão restaurada');
+            showDebug('🌐 Conexão com internet restaurada');
         });
         
         window.addEventListener('offline', () => {
-            showDebug('📵 Offline - dados serão sincronizados quando voltar online');
+            showDebug('📵 Sem internet - dados serão sincronizados quando voltar online');
         });
         
-        showDebug('🚚 App Etex carregado!');
-    </script>
-</body>
-</html>
+        //
