@@ -1,0 +1,42 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fundo branco com bordas arredondadas -->
+  <rect width="512" height="512" rx="64" ry="64" fill="white"/>
+  
+  <!-- Logo Etex baseada na imagem original -->
+  <g transform="translate(256, 256)">
+    
+    <!-- Texto "etex" com fonte similar à original (maior) -->
+    <g transform="translate(-135, -25)">
+      <!-- Letra 'e' -->
+      <path d="M0 40 C0 15 15 0 40 0 L65 0 C75 0 75 12 65 12 L25 12 M12 20 L55 20 M12 32 L65 32 C75 32 75 44 65 44 L40 44 C15 44 0 32 0 40" 
+            fill="#2c2c2c" stroke="none"/>
+      
+      <!-- Letra 't' -->
+      <g transform="translate(90, -8)">
+        <rect x="0" y="8" width="40" height="8" fill="#2c2c2c"/>
+        <rect x="15" y="0" width="8" height="52" fill="#2c2c2c"/>
+        <path d="M15 44 C15 48 19 52 23 52 L30 52" fill="none" stroke="#2c2c2c" stroke-width="8"/>
+      </g>
+      
+      <!-- Letra 'e' -->
+      <g transform="translate(145, 0)">
+        <path d="M0 40 C0 15 15 0 40 0 L65 0 C75 0 75 12 65 12 L25 12 M12 20 L55 20 M12 32 L65 32 C75 32 75 44 65 44 L40 44 C15 44 0 32 0 40" 
+              fill="#2c2c2c" stroke="none"/>
+      </g>
+      
+      <!-- Letra 'x' -->
+      <g transform="translate(225, 0)">
+        <path d="M5 5 L35 39 M35 5 L5 39" stroke="#2c2c2c" stroke-width="10" stroke-linecap="round"/>
+      </g>
+    </g>
+    
+    <!-- Elemento laranja (forma angular da logo original - maior) -->
+    <g transform="translate(90, 55)">
+      <path d="M0 0 L40 0 L65 20 L40 40 L0 40 L25 20 Z" fill="#ff6600"/>
+    </g>
+    
+  </g>
+  
+  <!-- Borda sutil -->
+  <rect width="512" height="512" rx="64" ry="64" fill="none" stroke="#e0e0e0" stroke-width="2"/>
+</svg>
