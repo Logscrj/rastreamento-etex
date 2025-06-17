@@ -207,4 +207,243 @@
     
     <div class="container">
         <div class="status-indicator status-loading" id="statusIndicator">
-            ⏳ Conect
+            ⏳ Conectando ao servidor...
+        </div>
+        
+        <div class="tracking-details" id="trackingDetails">
+            <div class="detail-item">
+                <div class="detail-icon">🚛</div>
+                <div class="detail-label">Veículo</div>
+                <div class="detail-value" id="vehicleInfo">---</div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-icon">📍</div>
+                <div class="detail-label">Localização</div>
+                <div class="detail-value" id="locationInfo">---</div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-icon">⏰</div>
+                <div class="detail-label">Última Atualização</div>
+                <div class="detail-value" id="lastUpdateInfo">---</div>
+            </div>
+            
+            <div class="detail-item">
+                <div class="detail-icon">🎯</div>
+                <div class="detail-label">Precisão GPS</div>
+                <div class="detail-value" id="accuracyInfo">---</div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <div class="footer">
+            <h3 style="color: #ff6600; margin-bottom: 15px;">📞 Precisa de ajuda?</h3>
+            <p>Entre em contato com nossa equipe Etex</p>
+            <p style="margin-top: 10px;">
+                <strong>📱 WhatsApp:</strong> (XX) XXXXX-XXXX<br>
+                <strong>📧 Email:</strong> contato@etex.com.br
+            </p>
+        </div>
+    </div>
+    
+    <button class="refresh-btn" onclick="refreshTracking()" title="Atualizar rastreamento">
+        🔄
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        // Carregar configuração Firebase
+        await import('./firebase-config.js');
+        
+        // Inicializar Firebase
+        const app = initializeApp(window.firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Obter ID do pedido da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('pedido');
+        
+        if (!orderId) {
+            document.getElementById('statusIndicator').innerHTML = '❌ ID do pedido não encontrado na URL';
+            document.getElementById('statusIndicator').className = 'status-indicator status-inactive';
+            throw new Error('ID do pedido não fornecido');
+        }
+        
+        // Atualizar info do pedido no header
+        document.getElementById('orderInfo').innerHTML = `📋 Pedido: <strong>${orderId}</strong>`;
+        
+        // Inicializar mapa
+        const map = L.map('map').setView([-15.7939, -47.8825], 10);
+        
+        // Adicionar tiles do OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors | Etex'
+        }).addTo(map);
+        
+        // Ícone personalizado para o caminhão
+        const truckIcon = L.divIcon({
+            html: '<div style="background: #ff6600; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 4px solid white; box-shadow: 0 4px 15px rgba(255,102,0,0.5); animation: bounce 2s infinite;">🚚</div>',
+            iconSize: [40, 40],
+            className: 'custom-truck-icon'
+        });
+        
+        // Variáveis do rastreamento
+        let marker = null;
+        let trackingData = null;
+        
+        // Escutar mudanças no Firebase para este pedido específico
+        const trackingRef = ref(database, `trackings/${orderId}`);
+        onValue(trackingRef, (snapshot) => {
+            const data = snapshot.val();
+            
+            if (data) {
+                trackingData = data;
+                updateTracking(data);
+            } else {
+                showError('Pedido não encontrado ou rastreamento não iniciado');
+            }
+        }, (error) => {
+            console.error('Erro ao conectar:', error);
+            showError('Erro ao conectar com o servidor');
+        });
+        
+        // Atualizar rastreamento
+        function updateTracking(data) {
+            const { latitude, longitude, licensePlate, timestamp, active, accuracy, startTime } = data;
+            
+            // Atualizar status
+            const statusIndicator = document.getElementById('statusIndicator');
+            if (active) {
+                statusIndicator.innerHTML = '✅ Rastreamento Ativo - Em tempo real';
+                statusIndicator.className = 'status-indicator status-active';
+            } else {
+                statusIndicator.innerHTML = '⏹️ Rastreamento Finalizado';
+                statusIndicator.className = 'status-indicator status-inactive';
+            }
+            
+            // Atualizar detalhes
+            document.getElementById('vehicleInfo').textContent = licensePlate;
+            document.getElementById('locationInfo').textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            document.getElementById('lastUpdateInfo').textContent = new Date(timestamp).toLocaleString('pt-BR');
+            document.getElementById('accuracyInfo').textContent = accuracy ? `±${Math.round(accuracy)}m` : 'N/A';
+            
+            // Atualizar mapa
+            const position = [latitude, longitude];
+            
+            if (marker) {
+                marker.setLatLng(position);
+            } else {
+                marker = L.marker(position, { icon: truckIcon }).addTo(map);
+                
+                // Popup com informações detalhadas
+                marker.bindPopup(`
+                    <div style="text-align: center; padding: 15px; min-width: 200px;">
+                        <h3 style="color: #ff6600; margin: 0 0 15px 0;">🚚 Etex</h3>
+                        <p style="margin: 8px 0;"><strong>📋 Pedido:</strong> ${orderId}</p>
+                        <p style="margin: 8px 0;"><strong>🚛 Veículo:</strong> ${licensePlate}</p>
+                        <p style="margin: 8px 0;"><strong>⏰ Atualizado:</strong><br>${new Date(timestamp).toLocaleString('pt-BR')}</p>
+                        <p style="margin: 8px 0;"><strong>📍 Coordenadas:</strong><br>${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>
+                        ${accuracy ? `<p style="margin: 8px 0;"><strong>🎯 Precisão:</strong> ±${Math.round(accuracy)}m</p>` : ''}
+                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+                            <small style="color: #666;">Rastreamento em tempo real</small>
+                        </div>
+                    </div>
+                `).openPopup();
+            }
+            
+            // Centralizar mapa na localização
+            map.setView(position, 16);
+            
+            // Desenhar trilha se houver histórico
+            if (data.history) {
+                drawTrackingHistory(data.history);
+            }
+        }
+        
+        // Desenhar histórico da rota
+        function drawTrackingHistory(history) {
+            const historyPoints = Object.values(history).map(point => [point.latitude, point.longitude]);
+            
+            if (historyPoints.length > 1) {
+                // Remover trilha anterior se existir
+                map.eachLayer(layer => {
+                    if (layer instanceof L.Polyline && layer.options.color === '#ff6600') {
+                        map.removeLayer(layer);
+                    }
+                });
+                
+                // Desenhar nova trilha
+                const polyline = L.polyline(historyPoints, {
+                    color: '#ff6600',
+                    weight: 4,
+                    opacity: 0.7,
+                    dashArray: '10, 5'
+                }).addTo(map);
+                
+                // Adicionar pontos de início e fim
+                if (historyPoints.length > 0) {
+                    // Ponto de início
+                    L.circleMarker(historyPoints[0], {
+                        radius: 8,
+                        fillColor: '#4CAF50',
+                        color: 'white',
+                        weight: 2,
+                        fillOpacity: 0.8
+                    }).addTo(map).bindPopup('🚀 Início do rastreamento');
+                    
+                    // Ponto atual (já existe o marcador do caminhão)
+                }
+            }
+        }
+        
+        // Mostrar erro
+        function showError(message) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            statusIndicator.innerHTML = `❌ ${message}`;
+            statusIndicator.className = 'status-indicator status-inactive';
+            
+            // Ocultar detalhes se houver erro
+            document.getElementById('trackingDetails').style.display = 'none';
+        }
+        
+        // Atualizar manualmente
+        window.refreshTracking = () => {
+            console.log('🔄 Atualizando rastreamento...');
+            location.reload();
+        };
+        
+        // Auto-refresh a cada 15 segundos
+        setInterval(() => {
+            if (trackingData && trackingData.active) {
+                console.log('🔄 Auto-refresh do rastreamento...');
+                // O Firebase já atualiza automaticamente
+            }
+        }, 15000);
+        
+        console.log(`🚚 Página do cliente carregada para pedido: ${orderId}`);
+    </script>
+    
+    <!-- CSS para animação do caminhão -->
+    <style>
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-5px);
+            }
+            60% {
+                transform: translateY(-3px);
+            }
+        }
+    </style>
+</body>
+</html>
