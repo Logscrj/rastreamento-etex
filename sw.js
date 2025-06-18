@@ -1,32 +1,29 @@
-// Service Worker Etex - Funcionamento em segundo plano
-const CACHE_NAME = 'etex-tracker-v2025';
+// ✅ SERVICE WORKER SIMPLES PARA PWA
+
+const CACHE_NAME = 'etex-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/admin.html',
-  '/cliente.html',
-  '/manifest.json',
-  '/firebase-config.js'
+  './',
+  './index.html',
+  './cliente.html',
+  './admin.html',
+  './manifest.json',
+  './firebase-config.js'
 ];
 
-// Instalação
-self.addEventListener('install', event => {
+// Instalar
+self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('🚚 Cache Etex criado');
-        return cache.addAll(urlsToCache);
-      })
+      .then((cache) => cache.addAll(urlsToCache))
   );
-  self.skipWaiting();
 });
 
-// Ativação
-self.addEventListener('activate', event => {
+// Ativar
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
+        cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
@@ -34,17 +31,16 @@ self.addEventListener('activate', event => {
       );
     })
   );
-  self.clients.claim();
 });
 
-// Interceptar requisições
-self.addEventListener('fetch', event => {
+// Interceptar requests
+self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
+      .then((response) => {
         return response || fetch(event.request);
       })
   );
 });
 
-console.log('🚚 Service Worker Etex carregado!');
+console.log('🚚 Service Worker Etex ativo!');
