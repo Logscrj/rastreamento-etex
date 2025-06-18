@@ -33,11 +33,6 @@
             box-shadow: 0 4px 20px rgba(255,102,0,0.3);
         }
         
-        .logo {
-            height: 40px;
-            margin-bottom: 10px;
-        }
-        
         .header h1 {
             font-size: 24px;
             font-weight: bold;
@@ -150,38 +145,22 @@
         }
         
         .info-box {
-            background: rgba(255,193,7,0.1);
-            border-left: 4px solid #FFC107;
+            background: rgba(76,175,80,0.1);
+            border-left: 4px solid #4CAF50;
             padding: 15px;
             margin: 20px 0;
             border-radius: 8px;
         }
         
-        .links-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .link-item {
-            background: rgba(255,102,0,0.1);
-            border: 1px solid rgba(255,102,0,0.3);
-            border-radius: 8px;
-            padding: 12px;
+        .info-box h3 {
+            color: #4CAF50;
             margin-bottom: 10px;
-            word-break: break-all;
+            font-size: 16px;
         }
         
-        .link-item h4 {
-            color: #ff6600;
-            margin-bottom: 5px;
-        }
-        
-        .link-item a {
-            color: #fff;
-            text-decoration: none;
-            font-size: 12px;
+        .info-box p {
+            margin-bottom: 8px;
+            line-height: 1.4;
         }
         
         .spinner {
@@ -219,6 +198,33 @@
             overflow-y: auto;
         }
         
+        .tracking-status {
+            background: rgba(76,175,80,0.1);
+            border: 2px solid #4CAF50;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .tracking-status h3 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .status-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+        
+        .status-item strong {
+            color: #ff6600;
+        }
+        
         @media (max-width: 480px) {
             .container {
                 margin: 10px;
@@ -230,7 +236,7 @@
 <body>
     <div class="header">
         <h1>🚚 ETEX RASTREAMENTO</h1>
-        <p>Sistema de Monitoramento de Cargas</p>
+        <p>Painel do Motorista</p>
     </div>
     
     <div class="container">
@@ -256,38 +262,45 @@
             </button>
         </form>
         
-        <!-- Controles durante rastreamento -->
+        <!-- Status durante rastreamento -->
         <div id="trackingControls" style="display: none;">
+            <div class="tracking-status">
+                <h3>✅ Rastreamento Ativo</h3>
+                
+                <div class="status-item">
+                    <strong>📋 Pedido:</strong> <span id="trackingOrderId">---</span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>🚛 Placa:</strong> <span id="trackingLicensePlate">---</span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>⏰ Iniciado:</strong> <span id="trackingStartTime">---</span>
+                </div>
+                
+                <div class="status-item">
+                    <strong>📍 Última atualização:</strong> <span id="trackingLastUpdate">---</span>
+                </div>
+            </div>
+            
             <div class="info-box">
-                <p><strong>⚠️ IMPORTANTE:</strong> Mantenha este app aberto em segundo plano. O rastreamento continuará funcionando mesmo com a tela desligada.</p>
+                <h3>📱 Instruções Importantes:</h3>
+                <p>✅ <strong>Mantenha o app aberto</strong> durante toda a viagem</p>
+                <p>✅ <strong>GPS sempre ativo</strong> para melhor precisão</p>
+                <p>✅ <strong>Conexão estável</strong> com internet</p>
+                <p>⚠️ <strong>Não feche</strong> esta aba do navegador</p>
             </div>
             
             <button class="btn btn-danger" id="stopBtn">
-                ⏹️ Parar Rastreamento
+                ⏹️ Finalizar Rastreamento
             </button>
-        </div>
-        
-        <!-- Links de acompanhamento -->
-        <div id="linksCard" class="links-card" style="display: none;">
-            <h3 style="color: #ff6600; margin-bottom: 15px;">🔗 Links de Acompanhamento</h3>
-            
-            <div class="link-item">
-                <h4>👤 Para o Cliente:</h4>
-                <a href="#" id="customerLink" target="_blank">Aguardando...</a>
-                <button onclick="copyLink('customer')" style="float: right; background: #ff6600; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">📋</button>
-            </div>
-            
-            <div class="link-item">
-                <h4>⚙️ Painel Admin:</h4>
-                <a href="admin.html" target="_blank" id="adminLink">Abrir Painel Administrativo</a>
-                <button onclick="copyLink('admin')" style="float: right; background: #ff6600; border: none; color: white; padding: 5px 10px; border-radius: 5px; cursor: pointer;">📋</button>
-            </div>
         </div>
     </div>
     
     <div class="footer">
         <p>🚚 Etex - Sistema de Rastreamento v2025<br>
-        <small>Desenvolvido com tecnologia PWA avançada</small></p>
+        <small>Desenvolvido para motoristas</small></p>
     </div>
 
     <script>
@@ -307,7 +320,7 @@
         }
         
         // Log inicial
-        showDebug('🚚 App iniciando...');
+        showDebug('🚚 Painel do Motorista iniciando...');
         
         // Verificar recursos básicos
         if ('geolocation' in navigator) {
@@ -329,6 +342,8 @@
         let watchId = null;
         let trackingInterval = null;
         let currentOrderId = null;
+        let currentLicensePlate = null;
+        let trackingStartTime = null;
         let app = null;
         let database = null;
         
@@ -339,8 +354,12 @@
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
         const trackingControls = document.getElementById('trackingControls');
-        const linksCard = document.getElementById('linksCard');
-        const customerLink = document.getElementById('customerLink');
+        
+        // Elementos de status
+        const trackingOrderIdSpan = document.getElementById('trackingOrderId');
+        const trackingLicensePlateSpan = document.getElementById('trackingLicensePlate');
+        const trackingStartTimeSpan = document.getElementById('trackingStartTime');
+        const trackingLastUpdateSpan = document.getElementById('trackingLastUpdate');
         
         showDebug('✅ Módulos Firebase carregados');
         
@@ -349,18 +368,16 @@
             try {
                 showDebug('🔥 Carregando configuração Firebase...');
                 
-                // Tentar carregar configuração
                 try {
                     await import('./firebase-config.js');
                     showDebug('✅ Arquivo firebase-config.js carregado');
                 } catch (configError) {
                     showDebug('❌ Erro ao carregar firebase-config.js: ' + configError.message);
-                    throw new Error('Arquivo firebase-config.js não encontrado. Certifique-se de que existe e está configurado.');
+                    throw new Error('Arquivo firebase-config.js não encontrado');
                 }
                 
-                // Verificar se a configuração existe
                 if (!window.firebaseConfig) {
-                    throw new Error('Configuração do Firebase não encontrada em window.firebaseConfig');
+                    throw new Error('Configuração do Firebase não encontrada');
                 }
                 
                 showDebug('🔥 Inicializando Firebase...');
@@ -375,36 +392,15 @@
             }
         }
         
-        // ✅ Solicitar Wake Lock para manter app ativo
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    showDebug('✅ Wake Lock ativo');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        showDebug('⚠️ Wake Lock liberado');
-                    });
-                } else {
-                    showDebug('⚠️ Wake Lock não suportado neste navegador');
-                }
-            } catch (error) {
-                showDebug('❌ Wake Lock erro: ' + error.message);
-            }
-        }
-        
         // ✅ Solicitar permissões de localização
         async function requestPermissions() {
             try {
                 showDebug('🔐 Solicitando permissões de localização...');
                 
-                // Verificar se geolocalização é suportada
                 if (!navigator.geolocation) {
                     throw new Error('Geolocalização não é suportada neste navegador');
                 }
                 
-                // Método direto com Promise
                 return new Promise((resolve, reject) => {
                     showDebug('📡 Obtendo localização...');
                     
@@ -419,13 +415,13 @@
                             
                             let errorMessage = '';
                             switch(error.code) {
-                                case 1: // PERMISSION_DENIED
+                                case 1:
                                     errorMessage = 'SOLUÇÃO: Clique no ícone de cadeado 🔒 na barra de endereços → "Localização" → "Sempre permitir" → Recarregue a página';
                                     break;
-                                case 2: // POSITION_UNAVAILABLE
-                                    errorMessage = 'Localização indisponível. Verifique se o GPS está ativo e tente em local aberto.';
+                                case 2:
+                                    errorMessage = 'Localização indisponível. Verifique se o GPS está ativo.';
                                     break;
-                                case 3: // TIMEOUT
+                                case 3:
                                     errorMessage = 'Timeout. Tente sair de ambientes fechados e aguarde alguns segundos.';
                                     break;
                             }
@@ -483,7 +479,7 @@
             statusCard.className = 'status-card';
             
             try {
-                // Inicializar Firebase primeiro
+                // Inicializar Firebase
                 statusText.textContent = '🔥 Conectando ao Firebase...';
                 const firebaseOk = await initFirebase();
                 if (!firebaseOk) {
@@ -493,9 +489,6 @@
                 // Solicitar permissões
                 statusText.textContent = '🔐 Solicitando permissões...';
                 await requestPermissions();
-                
-                // Ativar Wake Lock
-                await requestWakeLock();
                 
                 // Obter localização inicial
                 statusText.textContent = '📍 Obtendo localização...';
@@ -526,6 +519,8 @@
                 
                 // Iniciar rastreamento contínuo
                 currentOrderId = orderId;
+                currentLicensePlate = licensePlate;
+                trackingStartTime = new Date().toLocaleString('pt-BR');
                 isTracking = true;
                 
                 startContinuousTracking(orderId);
@@ -598,6 +593,11 @@
                 showDebug('📍 Update: ' + now);
                 statusText.textContent = `✅ Ativo - ${now}`;
                 
+                // Atualizar status na interface
+                if (trackingLastUpdateSpan) {
+                    trackingLastUpdateSpan.textContent = now;
+                }
+                
             } catch (error) {
                 showDebug('❌ Erro update: ' + error.message);
             }
@@ -616,11 +616,6 @@
                     trackingInterval = null;
                 }
                 
-                if (wakeLock) {
-                    wakeLock.release();
-                    wakeLock = null;
-                }
-                
                 if (currentOrderId && database) {
                     await set(ref(database, `trackings/${currentOrderId}/active`), false);
                     await set(ref(database, `trackings/${currentOrderId}/endTime`), new Date().toISOString());
@@ -628,6 +623,7 @@
                 
                 isTracking = false;
                 currentOrderId = null;
+                currentLicensePlate = null;
                 statusCard.classList.remove('active');
                 statusText.textContent = '⏹️ Rastreamento finalizado';
                 
@@ -652,40 +648,21 @@
             if (isTracking) {
                 form.style.display = 'none';
                 trackingControls.style.display = 'block';
-                linksCard.style.display = 'block';
                 
-                const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-                const customerUrl = `${baseUrl}cliente.html?pedido=${currentOrderId}`;
-                
-                customerLink.href = customerUrl;
-                customerLink.textContent = customerUrl;
+                // Atualizar informações de status
+                if (trackingOrderIdSpan) trackingOrderIdSpan.textContent = currentOrderId;
+                if (trackingLicensePlateSpan) trackingLicensePlateSpan.textContent = currentLicensePlate;
+                if (trackingStartTimeSpan) trackingStartTimeSpan.textContent = trackingStartTime;
                 
             } else {
                 form.style.display = 'block';
                 trackingControls.style.display = 'none';
-                linksCard.style.display = 'none';
                 startBtn.disabled = false;
                 startBtn.innerHTML = '▶️ Iniciar Rastreamento';
             }
         }
         
-        // ✅ Copiar link
-        window.copyLink = async (type) => {
-            try {
-                const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-                let url = type === 'customer' ? 
-                    `${baseUrl}cliente.html?pedido=${currentOrderId}` : 
-                    `${baseUrl}admin.html`;
-                
-                await navigator.clipboard.writeText(url);
-                showDebug('📋 Link copiado');
-                alert('📋 Link copiado!');
-            } catch (error) {
-                showDebug('❌ Erro ao copiar: ' + error.message);
-            }
-        };
-        
-        showDebug('🎯 Sistema pronto para uso!');
+        showDebug('🎯 Painel do Motorista pronto!');
         
     </script>
 </body>
